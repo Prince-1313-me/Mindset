@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    function isUserDocOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'streak', 'lastActiveDate', 'missedDaysCount']) &&
+             data.uid == request.auth.uid &&
+             data.streak is int && data.streak >= 0 &&
+             data.missedDaysCount is int && data.missedDaysCount >= 0;
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['id', 'userId', 'title', 'completed', 'date']) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.completed is bool &&
+             data.date is string &&
+             (!('reminderTime' in data) || (data.reminderTime is string && data.reminderTime.matches("^([01]\\d|2[0-3]):([0-5]\\d)$")));
+    }
+
+    function isValidRoutine(data) {
+      return data.keys().hasAll(['id', 'name']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             (!('userId' in data) || data.userId == request.auth.uid);
+    }
+
+    function isValidHistory(data) {
+      return data.keys().hasAll(['userId', 'date', 'completionRate']) &&
+             data.userId == request.auth.uid &&
+             data.completionRate is number && data.completionRate >= 0 && data.completionRate <= 100;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isUserDocOwner(userId);
+      allow create: if isUserDocOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isUserDocOwner(userId) && isValidUser(request.resource.data);
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidTask(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidTask(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
+    }
+
+    match /routines/{routineId} {
+      allow read: if true; // Default routines are public, custom are filtered by userId in app
+      allow create: if isAuthenticated() && isValidRoutine(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid) && isValidRoutine(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid);
+    }
+
+    match /history/{historyId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidHistory(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidHistory(request.resource.data);
+    }
+  }
+}

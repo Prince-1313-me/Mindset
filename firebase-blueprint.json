@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and productivity stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "streak": { "type": "integer" },
+        "lastActiveDate": { "type": "string", "format": "date-time" },
+        "missedDaysCount": { "type": "integer" },
+        "screenTimeLimit": { "type": "integer" },
+        "preferredRoutineId": { "type": "string" }
+      },
+      "required": ["uid", "streak", "lastActiveDate", "missedDaysCount"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A daily task for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "date": { "type": "string", "format": "date" },
+        "routineId": { "type": "string" },
+        "reminderTime": { "type": "string", "format": "time", "description": "HH:mm format" }
+      },
+      "required": ["id", "userId", "title", "completed", "date"]
+    },
+    "Routine": {
+      "title": "Routine",
+      "description": "A collection of tasks that can be applied daily",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "tasks": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "History": {
+      "title": "History",
+      "description": "Daily performance history",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "completionRate": { "type": "number" },
+        "screenTime": { "type": "number" },
+        "streakAtDate": { "type": "integer" }
+      },
+      "required": ["userId", "date", "completionRate"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Individual tasks"
+    },
+    "/routines/{routineId}": {
+      "schema": "Routine",
+      "description": "Routines (default and custom)"
+    },
+    "/history/{historyId}": {
+      "schema": "History",
+      "description": "Daily performance history"
+    }
+  }
+}

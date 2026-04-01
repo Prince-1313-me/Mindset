@@ -10,6 +10,7 @@ export default defineConfig(({mode}) => {
     define: {
       'process.env.MINDSET_API_KEY': JSON.stringify(env.MINDSET_API_KEY),
       'process.env.AI_CHATBOT_API_KEY': JSON.stringify(env.AI_CHATBOT_API_KEY),
+      'process.env.Ai_ChatBot': JSON.stringify(env.Ai_ChatBot),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
     resolve: {

@@ -4,7 +4,7 @@ let ai: any = null;
 
 try {
   // Prefer the user-provided chatbot key if available, otherwise use the standard Gemini API key
-  const apiKey = process.env.AI_CHATBOT_API_KEY || process.env.GEMINI_API_KEY || process.env.MINDSET_API_KEY;
+  const apiKey = process.env.Ai_ChatBot || process.env.AI_CHATBOT_API_KEY || process.env.GEMINI_API_KEY || process.env.MINDSET_API_KEY;
   if (apiKey) {
     ai = new GoogleGenAI({ apiKey });
   }

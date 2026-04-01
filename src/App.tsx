@@ -287,6 +287,7 @@ export default function App() {
   const [routines, setRoutines] = useState<Routine[]>(DEFAULT_ROUTINES);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [screenTime, setScreenTime] = useState<number>(0);
   const [coachFeedback, setCoachFeedback] = useState<CoachFeedback | null>(null);
@@ -361,7 +362,7 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        const isAdminByEmail = u.email === "prince.88760@gmail.com";
+        const isAdminByEmail = u.email === "prince.88760@gmail.com" || u.email === "0global.marketing.01@gmail.com";
         setIsAdmin(isAdminByEmail);
         if (isAdminByEmail) setActiveTab('admin');
         await syncProfile(u, isAdminByEmail);
@@ -422,9 +423,12 @@ export default function App() {
         setProfile(newProfile);
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${u.uid}`);
+      console.error("Profile sync failed:", error);
+      // We still want to stop the loading spinner even if profile sync fails
+    } finally {
+      setLoading(false);
+      setIsLoggingIn(false);
     }
-    setLoading(false);
   };
 
   // --- Real-time Data ---
@@ -488,14 +492,16 @@ export default function App() {
   const handleLogin = async (mode: 'user' | 'admin') => {
     const provider = new GoogleAuthProvider();
     try {
+      setIsLoggingIn(true);
       setLoginMode(mode);
       const result = await signInWithPopup(auth, provider);
-      if (mode === 'admin' && result.user.email !== "prince.88760@gmail.com") {
+      if (mode === 'admin' && result.user.email !== "prince.88760@gmail.com" && result.user.email !== "0global.marketing.01@gmail.com") {
         await signOut(auth);
         alert("Access Denied: You do not have admin privileges. Please log in with the authorized admin email.");
       }
     } catch (error: any) {
       console.error("Login failed:", error);
+      setIsLoggingIn(false);
       let errorMessage = "Login failed. Please try again.";
       if (error.code === 'auth/popup-blocked') {
         errorMessage = "Login popup was blocked by your browser. Please allow popups for this site.";
@@ -718,16 +724,33 @@ export default function App() {
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => handleLogin('user')}
-                className="text-xs font-black uppercase tracking-widest text-premium-silver/60 hover:text-white transition-colors px-4 py-2"
+                disabled={isLoggingIn}
+                className={cn(
+                  "text-xs font-black uppercase tracking-widest text-premium-silver/60 hover:text-white transition-colors px-4 py-2",
+                  isLoggingIn && "opacity-50 cursor-not-allowed"
+                )}
               >
-                Login
+                {isLoggingIn && loginMode === 'user' ? 'Logging in...' : 'Login'}
               </button>
               <button 
                 onClick={() => handleLogin('admin')}
-                className="premium-button py-2 px-4 text-[10px] font-black uppercase tracking-widest border-premium-accent/30 text-premium-accent hover:bg-premium-accent/10"
+                disabled={isLoggingIn}
+                className={cn(
+                  "premium-button py-2 px-4 text-[10px] font-black uppercase tracking-widest border-premium-accent/30 text-premium-accent hover:bg-premium-accent/10",
+                  isLoggingIn && "opacity-50 cursor-not-allowed"
+                )}
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Admin Access
+                {isLoggingIn && loginMode === 'admin' ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 border-2 border-premium-accent border-t-transparent rounded-full animate-spin" />
+                    Authenticating...
+                  </div>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Admin Access
+                  </>
+                )}
               </button>
             </div>
           )}
@@ -754,9 +777,13 @@ export default function App() {
               <div className="pt-10">
                 <button 
                   onClick={() => handleLogin('user')}
-                  className="premium-button-accent px-12 py-4 text-lg font-black uppercase tracking-widest shadow-[0_0_30px_rgba(0,229,255,0.3)]"
+                  disabled={isLoggingIn}
+                  className={cn(
+                    "premium-button-accent px-12 py-4 text-lg font-black uppercase tracking-widest shadow-[0_0_30px_rgba(0,229,255,0.3)]",
+                    isLoggingIn && "opacity-50 cursor-not-allowed"
+                  )}
                 >
-                  Get Started Now
+                  {isLoggingIn && loginMode === 'user' ? 'Authenticating...' : 'Get Started Now'}
                 </button>
               </div>
             </motion.div>
@@ -1291,11 +1318,11 @@ export default function App() {
           <div className="space-y-2">
             <p className="text-[10px] font-black text-premium-silver/20 uppercase tracking-[0.4em]">Strategic Support</p>
             <div className="flex flex-col md:flex-row items-center justify-center gap-8 text-sm">
-              <a href="mailto:prince.88760@gmail.com" className="group flex items-center gap-3 text-premium-silver/40 hover:text-white transition-all">
+              <a href="mailto:0global.marketing.01@gmail.com" className="group flex items-center gap-3 text-premium-silver/40 hover:text-white transition-all">
                 <div className="p-2 bg-premium-card rounded-lg group-hover:bg-premium-accent/10 transition-all">
                   <Bell className="w-4 h-4" />
                 </div>
-                <span className="font-bold tracking-tight">prince.88760@gmail.com</span>
+                <span className="font-bold tracking-tight">0global.marketing.01@gmail.com</span>
               </a>
               <a href="tel:9871888760" className="group flex items-center gap-3 text-premium-silver/40 hover:text-white transition-all">
                 <div className="p-2 bg-premium-card rounded-lg group-hover:bg-premium-accent/10 transition-all">

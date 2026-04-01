@@ -9,6 +9,8 @@ export default defineConfig(({mode}) => {
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.MINDSET_API_KEY': JSON.stringify(env.MINDSET_API_KEY),
+      'process.env.AI_CHATBOT_API_KEY': JSON.stringify(env.AI_CHATBOT_API_KEY),
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
     resolve: {
       alias: {

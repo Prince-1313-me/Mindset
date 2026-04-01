@@ -492,10 +492,19 @@ export default function App() {
       const result = await signInWithPopup(auth, provider);
       if (mode === 'admin' && result.user.email !== "prince.88760@gmail.com") {
         await signOut(auth);
-        alert("Access Denied: You do not have admin privileges.");
+        alert("Access Denied: You do not have admin privileges. Please log in with the authorized admin email.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed:", error);
+      let errorMessage = "Login failed. Please try again.";
+      if (error.code === 'auth/popup-blocked') {
+        errorMessage = "Login popup was blocked by your browser. Please allow popups for this site.";
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = "This domain is not authorized for Firebase Authentication. Please add it to the authorized domains in the Firebase Console.";
+      } else if (error.message) {
+        errorMessage = `Login error: ${error.message}`;
+      }
+      alert(errorMessage);
     }
   };
 

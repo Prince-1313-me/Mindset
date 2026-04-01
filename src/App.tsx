@@ -30,7 +30,8 @@ import {
   subDays, 
   startOfDay,
   differenceInDays,
-  parseISO
+  parseISO,
+  parse
 } from 'date-fns';
 import { 
   Flame, 
@@ -49,7 +50,12 @@ import {
   Moon,
   Bell,
   BellOff,
-  Clock
+  Clock,
+  Users,
+  Activity,
+  ShieldCheck,
+  Calendar as CalendarIcon,
+  Search
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -66,6 +72,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { db, auth } from './firebase';
 import { getCoachFeedback, CoachFeedback } from './services/geminiService';
 import { cn } from './lib/utils';
+import { Chatbot } from './components/Chatbot';
 
 // --- Types ---
 enum OperationType {
@@ -121,6 +128,9 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 interface UserProfile {
   uid: string;
+  email?: string;
+  displayName?: string;
+  role?: 'user' | 'admin';
   streak: number;
   lastActiveDate: string;
   missedDaysCount: number;
@@ -158,38 +168,121 @@ interface HistoryRecord {
 // --- Constants ---
 const DEFAULT_ROUTINES: Routine[] = [
   {
-    id: 'morning',
-    name: 'Morning Discipline',
-    description: 'Start your day with focus and energy.',
-    tasks: ['Wake up at 6 AM', 'Hydrate (500ml)', '15m Meditation', 'Plan top 3 tasks'],
-    imageUrl: 'https://picsum.photos/seed/morning-meditation/800/600'
+    id: 'balanced-beginner',
+    name: 'The Balanced Beginner',
+    description: 'Best for: Users who want to build discipline slowly without burning out.',
+    tasks: [
+      '07:00 AM: Wake up & Hydrate (1 glass of water)',
+      '07:15 AM: 15-min light stretching or meditation',
+      '08:00 AM: Learn something new (e.g., English vocabulary, reading 5 pages of a book)',
+      '09:00 AM: Core Work/Study block',
+      '01:30 PM: Mindful Lunch (No screens allowed)',
+      '06:00 PM: Evening walk (Leave the phone at home)',
+      '09:30 PM: Plan tomorrow\'s top 3 tasks',
+      '10:30 PM: Sleep'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=800'
   },
   {
-    id: 'study',
-    name: 'Deep Work / Study',
-    description: 'Maximize cognitive performance.',
-    tasks: ['Phone in other room', '45m Focus session', '5m Stretch', 'Review notes'],
-    imageUrl: 'https://picsum.photos/seed/focus-study/800/600'
+    id: 'tech-sprint',
+    name: 'The Tech Sprint',
+    description: 'Best for: Developers, tech enthusiasts, and people working on complex projects.',
+    tasks: [
+      '06:30 AM: Wake up & Black Coffee',
+      '07:00 AM: Morning review (Check GitHub, project boards, or daily goals)',
+      '08:00 AM: Deep Work Block 1 (Coding, building architecture like Vercel/Firebase)',
+      '11:00 AM: Break & Hydrate',
+      '11:15 AM: Deep Work Block 2 (Debugging, problem-solving, AI model training)',
+      '02:00 PM: Lunch & Tech Podcasts/Articles',
+      '05:00 PM: Wrap up tasks & push final code/commits',
+      '08:00 PM: Screen-free relaxation'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=800'
   },
   {
-    id: 'fitness',
-    name: 'Physical Strength',
-    description: 'Maintain your body for your mind.',
-    tasks: ['30m Workout', 'Protein-rich meal', 'Mobility work'],
-    imageUrl: 'https://picsum.photos/seed/workout-strength/800/600'
+    id: 'exam-grind',
+    name: 'The Exam Grind',
+    description: 'Best for: Students preparing for tough exams who need to cover specific syllabus units without panicking.',
+    tasks: [
+      '06:00 AM: Wake up & quick workout (to get blood flowing)',
+      '06:30 AM: Active Recall / Revision of yesterday\'s topics',
+      '08:00 AM: Study Block 1: Unit A (High difficulty subject)',
+      '11:00 AM: 20-min break (Listen to music, walk)',
+      '11:30 AM: Study Block 2: Unit B (Medium difficulty)',
+      '03:00 PM: Attempt mock tests or practice questions',
+      '06:00 PM: Review mistakes from practice',
+      '09:00 PM: Light reading & sleep preparation (No late-night cramming)'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=800'
   },
   {
-    id: 'sleep',
-    name: 'Sleep Hygiene',
-    description: 'Recover for tomorrow.',
-    tasks: ['No screens 1h before bed', 'Read 10 pages', 'Cool room temp'],
-    imageUrl: 'https://picsum.photos/seed/sleep-peace/800/600'
+    id: 'creators-flow',
+    name: 'The Creator\'s Flow',
+    description: 'Best for: Digital marketers, content creators, and strategists.',
+    tasks: [
+      '07:30 AM: Wake up & Morning Journaling',
+      '08:30 AM: Industry research (Global marketing trends, checking competitors)',
+      '10:00 AM: Creative Block (Writing copy, designing UI/UX, scripting)',
+      '01:00 PM: Lunch Break',
+      '02:00 PM: Analytics & Outreach (Checking stats, replying to emails/DMs)',
+      '04:30 PM: Brainstorming session for next week\'s campaigns',
+      '07:00 PM: Gym or Physical activity',
+      '10:00 PM: Wind down'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'monk-mode',
+    name: 'The Monk Mode',
+    description: 'Best for: Users who want extreme focus and a strict streak to hit massive goals.',
+    tasks: [
+      '05:00 AM: Wake up & Cold Shower',
+      '05:30 AM: 30-min Meditation & Visualization',
+      '06:00 AM: 90-min High-Priority Task (The hardest task of the day)',
+      '08:00 AM: High-protein breakfast',
+      '09:00 AM - 01:00 PM: Uninterrupted Work block (Phone on Airplane mode)',
+      '05:00 PM: Intense Workout (Weightlifting or running)',
+      '08:00 PM: Digital Sunset (All screens off)',
+      '09:30 PM: Sleep strictly'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'night-owl',
+    name: 'The Night Owl',
+    description: 'Best for: Users whose brains work best when the world is asleep.',
+    tasks: [
+      '10:00 AM: Wake up & slow morning routine',
+      '11:30 AM: Admin tasks (Emails, scheduling, easy tasks)',
+      '02:00 PM: First main work session',
+      '06:00 PM: Workout/Dinner',
+      '10:00 PM: Deep Work Block 1 (Peak focus hours begin)',
+      '01:00 AM: Break (Stretch, snack)',
+      '01:30 AM: Deep Work Block 2',
+      '03:00 AM: Review streaks and sleep'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&q=80&w=800'
+  },
+  {
+    id: 'micro-routine',
+    name: 'The "1% Better" Micro-Routine',
+    description: 'Best for: Weekends or days when the user is feeling low energy but doesn\'t want to lose their streak.',
+    tasks: [
+      'Anytime: Make the bed (Task 1)',
+      'Anytime: Drink 2 liters of water total (Task 2)',
+      'Anytime: 10 minutes of outdoor sunlight (Task 3)',
+      'Anytime: Read 1 page or watch 1 educational video (Task 4)',
+      'Evening: Mark the day as "survived" to maintain the streak.'
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&q=80&w=800'
   }
 ];
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loginMode, setLoginMode] = useState<'user' | 'admin' | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [routines, setRoutines] = useState<Routine[]>(DEFAULT_ROUTINES);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
@@ -197,12 +290,16 @@ export default function App() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [screenTime, setScreenTime] = useState<number>(0);
   const [coachFeedback, setCoachFeedback] = useState<CoachFeedback | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'today' | 'routines' | 'stats'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'routines' | 'stats' | 'admin'>('today');
   const [reminderPermission, setReminderPermission] = useState<NotificationPermission>('default');
   const [notifiedTasks, setNotifiedTasks] = useState<Set<string>>(new Set());
   const [showTimePicker, setShowTimePicker] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState('09:00');
+
+  // Admin specific state
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [allTasksCount, setAllTasksCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // --- Notification Setup ---
   useEffect(() => {
@@ -264,16 +361,20 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        await syncProfile(u);
+        const isAdminByEmail = u.email === "prince.88760@gmail.com";
+        setIsAdmin(isAdminByEmail);
+        if (isAdminByEmail) setActiveTab('admin');
+        await syncProfile(u, isAdminByEmail);
       } else {
         setProfile(null);
+        setIsAdmin(false);
         setLoading(false);
       }
     });
     return unsubscribe;
   }, []);
 
-  const syncProfile = async (u: FirebaseUser) => {
+  const syncProfile = async (u: FirebaseUser, isAdminUser: boolean) => {
     try {
       const userRef = doc(db, 'users', u.uid);
       const userSnap = await getDoc(userRef);
@@ -287,27 +388,31 @@ export default function App() {
         const diff = differenceInDays(startOfToday(), lastDate);
 
         if (diff > 1) {
-          // Skipped more than 1 day
           if (diff >= 2) {
             streak = 0;
             missedDaysCount += diff;
           } else {
-            // Skipped exactly 1 day - warning logic handled in UI
             missedDaysCount += 1;
           }
           
           await updateDoc(userRef, {
             streak,
             lastActiveDate: today,
-            missedDaysCount
+            missedDaysCount,
+            email: u.email,
+            displayName: u.displayName,
+            role: isAdminUser ? 'admin' : (data.role || 'user')
           });
-          setProfile({ ...data, streak, lastActiveDate: today, missedDaysCount });
+          setProfile({ ...data, streak, lastActiveDate: today, missedDaysCount, role: isAdminUser ? 'admin' : (data.role || 'user') });
         } else {
           setProfile(data);
         }
       } else {
         const newProfile: UserProfile = {
           uid: u.uid,
+          email: u.email || '',
+          displayName: u.displayName || '',
+          role: isAdminUser ? 'admin' : 'user',
           streak: 0,
           lastActiveDate: today,
           missedDaysCount: 0,
@@ -354,17 +459,41 @@ export default function App() {
       handleFirestoreError(error, OperationType.GET, 'history');
     });
 
+    if (isAdmin) {
+      const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+        setAllUsers(snapshot.docs.map(doc => doc.data() as UserProfile));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, 'users');
+      });
+      const unsubscribeTasksAll = onSnapshot(collection(db, 'tasks'), (snapshot) => {
+        setAllTasksCount(snapshot.size);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, 'tasks_all');
+      });
+      return () => {
+        unsubscribeTasks();
+        unsubscribeHistory();
+        unsubscribeUsers();
+        unsubscribeTasksAll();
+      };
+    }
+
     return () => {
       unsubscribeTasks();
       unsubscribeHistory();
     };
-  }, [user]);
+  }, [user, isAdmin]);
 
   // --- Actions ---
-  const handleLogin = async () => {
+  const handleLogin = async (mode: 'user' | 'admin') => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      setLoginMode(mode);
+      const result = await signInWithPopup(auth, provider);
+      if (mode === 'admin' && result.user.email !== "prince.88760@gmail.com") {
+        await signOut(auth);
+        alert("Access Denied: You do not have admin privileges.");
+      }
     } catch (error) {
       console.error("Login failed:", error);
     }
@@ -435,8 +564,26 @@ export default function App() {
   };
 
   const applyRoutine = async (routine: Routine) => {
-    for (const taskTitle of routine.tasks) {
-      await addTask(taskTitle, routine.id);
+    for (const taskString of routine.tasks) {
+      let title = taskString;
+      let reminderTime: string | undefined = undefined;
+
+      // Try to extract time like "07:00 AM: Wake up"
+      const timeMatch = taskString.match(/^(\d{1,2}:\d{2}\s*(?:AM|PM)):?\s*(.*)$/i);
+      if (timeMatch) {
+        const timeStr = timeMatch[1];
+        title = timeMatch[2];
+        
+        // Convert "07:00 AM" to "07:00" (24h format for the app's reminder check)
+        try {
+          const date = parse(timeStr, 'hh:mm a', new Date());
+          reminderTime = format(date, 'HH:mm');
+        } catch (e) {
+          console.error("Failed to parse time:", timeStr);
+        }
+      }
+
+      await addTask(title, routine.id, reminderTime);
     }
     setActiveTab('today');
   };
@@ -481,7 +628,7 @@ export default function App() {
       streak: newStreak,
       screenTime: screenTime,
       missedDays: profile.missedDaysCount
-    }, isDarkMode);
+    }, true);
     setCoachFeedback(feedback);
   };
 
@@ -506,123 +653,158 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-premium-black flex flex-col items-center justify-center p-6 text-center">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full space-y-8"
+          className="max-w-md w-full space-y-12"
         >
-          <div className="space-y-2">
-            <div className="bg-neutral-900 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <BrainCircuit className="text-white w-10 h-10" />
+          <div className="space-y-4">
+            <div className="bg-white w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+              <BrainCircuit className="text-premium-black w-12 h-12" />
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-neutral-900">Mindset AI</h1>
-            <p className="text-neutral-500">Your disciplined productivity coach.</p>
+            <h1 className="text-5xl font-black tracking-tighter text-white">MINDSET</h1>
+            <p className="text-premium-silver/60 font-medium">Master your discipline. Elevate your life.</p>
           </div>
           
-          <button 
-            onClick={handleLogin}
-            className="w-full bg-neutral-900 text-white py-4 rounded-xl font-semibold hover:bg-neutral-800 transition-colors flex items-center justify-center gap-3"
-          >
-            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
-            Continue with Google
-          </button>
+          <div className="grid grid-cols-1 gap-4">
+            <button 
+              onClick={() => handleLogin('user')}
+              className="premium-button-accent w-full py-5 text-lg"
+            >
+              <Users className="w-5 h-5" />
+              User Login
+            </button>
+            
+            <button 
+              onClick={() => handleLogin('admin')}
+              className="premium-button w-full py-5 text-lg"
+            >
+              <ShieldCheck className="w-5 h-5" />
+              Admin Access
+            </button>
+          </div>
           
-          <p className="text-xs text-neutral-400">
-            Build discipline. Maintain streaks. Master focus.
-          </p>
+          <div className="pt-8 border-t border-premium-border">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-premium-silver/30 font-bold">
+              Premium Discipline Interface v2.0
+            </p>
+          </div>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className={cn(
-      "min-h-screen transition-colors duration-500",
-      isDarkMode ? "bg-neutral-950 text-neutral-100" : "bg-neutral-50 text-neutral-900"
-    )}>
+    <div className="min-h-screen bg-premium-black text-premium-silver antialiased">
       {/* Header */}
-      <header className="sticky top-0 z-10 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-neutral-900 dark:bg-neutral-100 p-2 rounded-lg">
-            <BrainCircuit className="w-5 h-5 text-white dark:text-neutral-900" />
+      <header className="sticky top-0 z-10 bg-premium-black/80 backdrop-blur-xl border-b border-premium-border px-8 py-5 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="bg-white p-2 rounded-lg">
+            <BrainCircuit className="w-5 h-5 text-black" />
           </div>
-          <span className="font-bold text-lg tracking-tight">Mindset</span>
+          <span className="font-black text-xl tracking-tight text-white uppercase">Mindset</span>
         </div>
         
-        <div className="flex items-center gap-4">
-          {reminderPermission !== 'granted' && (
+        <div className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-2 streak-badge">
+            <Flame className="w-4 h-4 fill-current" />
+            <span>{profile?.streak || 0} DAY STREAK</span>
+          </div>
+          
+          <div className="h-8 w-[1px] bg-premium-border hidden md:block" />
+
+          <div className="flex items-center gap-3">
             <button 
               onClick={requestNotificationPermission}
-              className="p-2 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors text-orange-500"
-              title="Enable Reminders"
+              className={cn(
+                "p-2.5 rounded-xl transition-all",
+                reminderPermission === 'granted' ? "text-premium-accent bg-premium-accent/5" : "text-premium-silver/30 hover:text-premium-silver/60"
+              )}
+              title={reminderPermission === 'granted' ? "Reminders Enabled" : "Enable Reminders"}
             >
-              <BellOff className="w-5 h-5" />
+              {reminderPermission === 'granted' ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
             </button>
-          )}
-          <button 
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-2 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors"
-          >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
-          <button 
-            onClick={handleLogout}
-            className="p-2 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
+            <button 
+              onClick={handleLogout}
+              className="p-2.5 rounded-xl hover:bg-premium-card transition-all text-white/60 hover:text-white"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-6 pb-32">
-        {/* Streak & Stats Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <main className="max-w-5xl mx-auto p-8 pb-32">
+        {/* Stats Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <motion.div 
-            whileHover={{ y: -2 }}
-            className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm"
+            whileHover={{ y: -4 }}
+            className="premium-card"
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Current Streak</span>
-              <Flame className={cn("w-6 h-6", profile?.streak ? "text-orange-500" : "text-neutral-300")} />
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-bold text-premium-silver/40 uppercase tracking-[0.2em]">Discipline Streak</span>
+              <div className="p-1.5 bg-premium-gold/10 rounded-full border border-premium-gold/20">
+                <Flame className={cn("w-4 h-4", profile?.streak ? "text-premium-gold" : "text-premium-silver/20")} />
+              </div>
             </div>
-            <div className="text-4xl font-black">{profile?.streak || 0} <span className="text-lg font-normal text-neutral-400">Days</span></div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-5xl font-black text-white">{profile?.streak || 0}</span>
+              <span className="text-sm font-bold text-premium-silver/40 uppercase">Days</span>
+            </div>
           </motion.div>
 
           <motion.div 
-            whileHover={{ y: -2 }}
-            className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm"
+            whileHover={{ y: -4 }}
+            className="premium-card"
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Today's Progress</span>
-              <CheckCircle2 className="w-6 h-6 text-green-500" />
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-bold text-premium-silver/40 uppercase tracking-[0.2em]">Daily Progress</span>
+              <div className="p-1.5 bg-premium-accent/10 rounded-full border border-premium-accent/20">
+                <CheckCircle2 className="w-4 h-4 text-premium-accent" />
+              </div>
             </div>
-            <div className="text-4xl font-black">{completionRate}%</div>
-            <div className="w-full bg-neutral-100 dark:bg-neutral-800 h-2 rounded-full mt-3 overflow-hidden">
+            <div className="flex items-baseline gap-2 mb-4">
+              <span className="text-5xl font-black text-white">{completionRate}</span>
+              <div className="flex flex-col">
+                <span className="text-2xl font-black text-white">%</span>
+                <span className="text-[10px] font-bold text-premium-silver/40 uppercase tracking-tighter">Target</span>
+              </div>
+            </div>
+            <div className="w-full bg-premium-dark h-2 rounded-full overflow-hidden">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${completionRate}%` }}
-                className="h-full bg-green-500"
+                className="h-full bg-premium-accent shadow-[0_0_15px_rgba(0,229,255,0.6)]"
               />
             </div>
           </motion.div>
 
           <motion.div 
-            whileHover={{ y: -2 }}
-            className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm"
+            whileHover={{ y: -4 }}
+            className="premium-card"
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Screen Time</span>
-              <Smartphone className="w-6 h-6 text-blue-500" />
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-bold text-premium-silver/40 uppercase tracking-[0.2em]">Digital Focus</span>
+              <div className="p-1.5 bg-blue-500/10 rounded-lg">
+                <Smartphone className="w-4 h-4 text-blue-400" />
+              </div>
             </div>
-            <div className="flex items-end gap-2">
-              <input 
-                type="number" 
-                value={screenTime}
-                onChange={(e) => setScreenTime(Number(e.target.value))}
-                className="text-4xl font-black bg-transparent w-20 outline-none"
-              />
-              <span className="text-lg font-normal text-neutral-400 mb-1">Hrs</span>
+            <div className="flex items-end justify-between">
+              <div className="flex items-center gap-3">
+                <input 
+                  type="number" 
+                  value={screenTime}
+                  onChange={(e) => setScreenTime(Number(e.target.value))}
+                  className="text-5xl font-black bg-transparent w-20 outline-none text-white"
+                  min="0"
+                  max="24"
+                />
+                <div className="w-8 h-12 border-2 border-white/20 rounded-full flex items-center justify-center">
+                  <div className={cn("w-4 h-4 bg-white rounded-full transition-all", screenTime > 0 ? "opacity-100 scale-100" : "opacity-20 scale-50")} />
+                </div>
+              </div>
+              <span className="text-sm font-bold text-premium-silver/40 uppercase mb-2">Hours</span>
             </div>
           </motion.div>
         </div>
@@ -640,12 +822,12 @@ export default function App() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-8 bg-neutral-100 dark:bg-neutral-900 p-1 rounded-2xl w-fit">
+        <div className="flex gap-1 mb-10 bg-premium-dark p-1 rounded-2xl w-fit border border-premium-border">
           <button 
             onClick={() => setActiveTab('today')}
             className={cn(
-              "px-6 py-2 rounded-xl text-sm font-semibold transition-all",
-              activeTab === 'today' ? "bg-white dark:bg-neutral-800 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+              "px-10 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all",
+              activeTab === 'today' ? "bg-premium-card text-white border border-white/5 shadow-2xl" : "text-premium-silver/20 hover:text-premium-silver/40"
             )}
           >
             Today
@@ -653,8 +835,8 @@ export default function App() {
           <button 
             onClick={() => setActiveTab('routines')}
             className={cn(
-              "px-6 py-2 rounded-xl text-sm font-semibold transition-all",
-              activeTab === 'routines' ? "bg-white dark:bg-neutral-800 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+              "px-10 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all",
+              activeTab === 'routines' ? "bg-premium-card text-white border border-white/5 shadow-2xl" : "text-premium-silver/20 hover:text-premium-silver/40"
             )}
           >
             Routines
@@ -662,12 +844,23 @@ export default function App() {
           <button 
             onClick={() => setActiveTab('stats')}
             className={cn(
-              "px-6 py-2 rounded-xl text-sm font-semibold transition-all",
-              activeTab === 'stats' ? "bg-white dark:bg-neutral-800 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+              "px-10 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all",
+              activeTab === 'stats' ? "bg-premium-card text-white border border-white/5 shadow-2xl" : "text-premium-silver/20 hover:text-premium-silver/40"
             )}
           >
             Stats
           </button>
+          {isAdmin && (
+            <button 
+              onClick={() => setActiveTab('admin')}
+              className={cn(
+                "px-10 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all",
+                activeTab === 'admin' ? "bg-premium-card text-white border border-white/5 shadow-2xl" : "text-premium-silver/20 hover:text-premium-silver/40"
+              )}
+            >
+              Admin
+            </button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -681,40 +874,43 @@ export default function App() {
               className="space-y-6"
             >
               {/* Task Input */}
-              <div className="space-y-3">
-                <div className="flex gap-3">
+              <div className="space-y-4">
+                <div className="flex gap-4">
                   <input 
                     type="text" 
-                    placeholder="Add a task..."
+                    placeholder="Enter a new discipline task..."
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addTask(newTaskTitle, undefined, selectedTime)}
-                    className="flex-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl px-6 py-4 outline-none focus:ring-2 ring-neutral-900 dark:ring-neutral-100 transition-all"
+                    className="premium-input flex-1 py-4 px-6 text-lg"
                   />
                   <button 
                     onClick={() => addTask(newTaskTitle, undefined, selectedTime)}
-                    className="bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 px-6 rounded-2xl font-bold hover:opacity-90 transition-opacity"
+                    className="premium-button-accent px-8"
                   >
                     <Plus className="w-6 h-6" />
                   </button>
                 </div>
-                <div className="flex items-center gap-3 px-2">
-                  <Clock className="w-4 h-4 text-neutral-400" />
-                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Set Reminder:</span>
+                <div className="flex items-center gap-4 px-2">
+                  <div className="flex items-center gap-2 text-premium-silver/40">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Reminder</span>
+                  </div>
                   <input 
                     type="time" 
                     value={selectedTime}
                     onChange={(e) => setSelectedTime(e.target.value)}
-                    className="bg-transparent text-sm font-bold outline-none border-b border-neutral-200 dark:border-neutral-800"
+                    className="bg-premium-dark border border-premium-border rounded-lg px-3 py-1 text-sm font-bold text-premium-accent"
                   />
                 </div>
               </div>
 
               {/* Task List */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {tasks.length === 0 ? (
-                  <div className="text-center py-12 text-neutral-400">
-                    <p>No tasks for today. Start by adding one or applying a routine.</p>
+                  <div className="premium-card text-center py-16 text-premium-silver/30">
+                    <p className="text-lg font-medium">No tasks scheduled for today.</p>
+                    <p className="text-sm">Apply a routine or add a custom task to begin.</p>
                   </div>
                 ) : (
                   tasks.map((task) => (
@@ -722,42 +918,44 @@ export default function App() {
                       layout
                       key={task.id}
                       className={cn(
-                        "group flex items-center justify-between p-5 rounded-2xl border transition-all",
+                        "group flex items-center justify-between p-6 rounded-2xl border transition-all relative overflow-hidden",
                         task.completed 
-                          ? "bg-neutral-50 dark:bg-neutral-900/50 border-neutral-100 dark:border-neutral-800 opacity-60" 
-                          : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 shadow-sm"
+                          ? "bg-premium-dark/50 border-premium-border/50 opacity-40" 
+                          : "bg-premium-card border-premium-border shadow-xl"
                       )}
                     >
-                      <div className="flex items-center gap-4 flex-1">
-                        <button onClick={() => toggleTask(task)}>
+                      <div className="flex items-center gap-5 flex-1">
+                        <button onClick={() => toggleTask(task)} className="relative z-10">
                           {task.completed ? (
-                            <CheckCircle2 className="w-6 h-6 text-green-500" />
+                            <div className="w-7 h-7 bg-premium-accent rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(0,229,255,0.3)]">
+                              <CheckCircle2 className="w-5 h-5 text-premium-black" />
+                            </div>
                           ) : (
-                            <Circle className="w-6 h-6 text-neutral-300 group-hover:text-neutral-400" />
+                            <div className="w-7 h-7 border-2 border-premium-border rounded-full group-hover:border-premium-accent transition-colors" />
                           )}
                         </button>
                         <div className="flex flex-col">
-                          <span className={cn("font-medium", task.completed && "line-through")}>
+                          <span className={cn("text-lg font-bold tracking-tight text-white transition-all", task.completed && "line-through text-premium-silver/30")}>
                             {task.title}
                           </span>
                           {task.reminderTime && (
-                            <div className="flex items-center gap-1 text-[10px] text-neutral-400 font-bold uppercase tracking-tighter">
+                            <div className="flex items-center gap-2 text-[10px] text-premium-accent font-black uppercase tracking-[0.1em] mt-1">
                               <Bell className="w-3 h-3" />
                               {task.reminderTime}
                             </div>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3 relative z-10">
                         <button 
                           onClick={() => setShowTimePicker(showTimePicker === task.id ? null : task.id)}
-                          className="p-2 text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-100 transition-colors"
+                          className="p-2.5 text-premium-silver/30 hover:text-premium-accent transition-colors"
                         >
                           <Clock className="w-5 h-5" />
                         </button>
                         <button 
                           onClick={() => deleteTask(task.id)}
-                          className="p-2 text-neutral-300 hover:text-red-500 transition-colors"
+                          className="p-2.5 text-premium-silver/30 hover:text-red-500 transition-colors"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
@@ -770,16 +968,18 @@ export default function App() {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="absolute top-full left-0 right-0 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 mt-2 shadow-xl"
+                            className="absolute inset-0 z-20 bg-premium-card flex items-center justify-center px-6"
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold uppercase">Change Reminder</span>
+                            <div className="flex items-center gap-6 w-full">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-premium-silver/40">Set Reminder Time</span>
                               <input 
                                 type="time" 
                                 defaultValue={task.reminderTime || '09:00'}
                                 onBlur={(e) => updateTaskReminder(task.id, e.target.value)}
-                                className="bg-neutral-100 dark:bg-neutral-900 px-3 py-1 rounded-lg text-sm font-bold"
+                                className="premium-input flex-1 py-2"
+                                autoFocus
                               />
+                              <button onClick={() => setShowTimePicker(null)} className="text-white font-bold text-xs uppercase tracking-widest">Cancel</button>
                             </div>
                           </motion.div>
                         )}
@@ -792,9 +992,9 @@ export default function App() {
               {tasks.length > 0 && (
                 <button 
                   onClick={completeDay}
-                  className="w-full bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 py-4 rounded-2xl font-bold text-lg shadow-lg hover:opacity-90 transition-all"
+                  className="premium-button-accent w-full py-5 text-xl mt-8 shadow-[0_10px_30px_rgba(0,229,255,0.2)]"
                 >
-                  Complete Day
+                  Finalize Daily Discipline
                 </button>
               )}
 
@@ -803,19 +1003,23 @@ export default function App() {
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 p-8 rounded-3xl space-y-6"
+                  className="bg-white text-premium-black p-10 rounded-[2.5rem] space-y-8 shadow-[0_20px_50px_rgba(255,255,255,0.1)]"
                 >
-                  <div className="flex items-center gap-3">
-                    <BrainCircuit className="w-8 h-8" />
-                    <h3 className="text-xl font-bold">Coach Feedback</h3>
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-premium-black rounded-2xl">
+                      <BrainCircuit className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-black uppercase tracking-tighter">AI Analysis</h3>
                   </div>
-                  <p className="text-lg leading-relaxed opacity-90 italic">"{coachFeedback.feedback}"</p>
-                  <div className="space-y-3">
-                    <h4 className="font-bold uppercase tracking-widest text-xs opacity-60">Actionable Tips</h4>
-                    <ul className="space-y-2">
+                  <p className="text-xl leading-relaxed font-medium italic opacity-80">"{coachFeedback.feedback}"</p>
+                  <div className="space-y-4">
+                    <h4 className="font-black uppercase tracking-[0.3em] text-[10px] opacity-40">Strategic Directives</h4>
+                    <ul className="space-y-3">
                       {coachFeedback.tips.map((tip, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <ChevronRight className="w-5 h-5 shrink-0 mt-0.5" />
+                        <li key={i} className="flex items-start gap-4 text-lg">
+                          <div className="w-6 h-6 rounded-full bg-premium-black text-white flex items-center justify-center text-xs font-bold shrink-0 mt-1">
+                            {i + 1}
+                          </div>
                           <span>{tip}</span>
                         </li>
                       ))}
@@ -837,29 +1041,30 @@ export default function App() {
               {routines.map((routine) => (
                 <div 
                   key={routine.id}
-                  className="bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden flex flex-col"
+                  className="premium-card overflow-hidden flex flex-col p-0"
                 >
                   {routine.imageUrl && (
-                    <div className="h-40 w-full relative">
+                    <div className="h-56 w-full relative">
                       <img 
                         src={routine.imageUrl} 
                         alt={routine.name} 
                         referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-                        <h3 className="text-xl font-bold text-white">{routine.name}</h3>
+                      <div className="absolute inset-0 bg-gradient-to-t from-premium-black via-premium-black/20 to-transparent" />
+                      <div className="absolute bottom-6 left-6">
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">{routine.name}</h3>
                       </div>
                     </div>
                   )}
-                  <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div className="p-8 flex-1 flex flex-col justify-between">
                     <div>
-                      {!routine.imageUrl && <h3 className="text-xl font-bold mb-2">{routine.name}</h3>}
-                      <p className="text-neutral-500 text-sm mb-4">{routine.description}</p>
-                      <ul className="space-y-2 mb-6">
+                      {!routine.imageUrl && <h3 className="text-2xl font-black mb-4 uppercase tracking-tighter">{routine.name}</h3>}
+                      <p className="text-premium-silver/40 text-sm mb-6 leading-relaxed">{routine.description}</p>
+                      <ul className="space-y-3 mb-8">
                         {routine.tasks.map((t, i) => (
-                          <li key={i} className="text-sm flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                            <div className="w-1.5 h-1.5 rounded-full bg-neutral-300" />
+                          <li key={i} className="text-sm flex items-center gap-3 text-premium-silver/60 font-medium">
+                            <div className="w-1.5 h-1.5 rounded-full bg-premium-accent shadow-[0_0_8px_rgba(0,229,255,0.5)]" />
                             {t}
                           </li>
                         ))}
@@ -867,9 +1072,9 @@ export default function App() {
                     </div>
                     <button 
                       onClick={() => applyRoutine(routine)}
-                      className="w-full py-3 rounded-xl border-2 border-neutral-900 dark:border-neutral-100 font-bold hover:bg-neutral-900 hover:text-white dark:hover:bg-neutral-100 dark:hover:text-neutral-900 transition-all"
+                      className="premium-button w-full py-4 uppercase tracking-widest text-xs font-black"
                     >
-                      Apply Routine
+                      Initialize Routine
                     </button>
                   </div>
                 </div>
@@ -885,63 +1090,161 @@ export default function App() {
               exit={{ opacity: 0, x: 10 }}
               className="space-y-8"
             >
-              <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
-                <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5" />
-                  Weekly Performance
+              <div className="premium-card">
+                <h3 className="text-sm font-black mb-8 flex items-center gap-3 uppercase tracking-widest text-white">
+                  <BarChart3 className="w-5 h-5 text-premium-accent" />
+                  Performance Analytics
                 </h3>
-                <div className="h-64 w-full">
+                <div className="h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={history}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#333" : "#eee"} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
                       <XAxis 
                         dataKey="date" 
                         tickFormatter={(val) => format(parseISO(val), 'MMM d')} 
-                        stroke={isDarkMode ? "#666" : "#999"}
-                        fontSize={12}
+                        stroke="#444"
+                        fontSize={10}
+                        fontWeight="bold"
                       />
-                      <YAxis stroke={isDarkMode ? "#666" : "#999"} fontSize={12} />
+                      <YAxis stroke="#444" fontSize={10} fontWeight="bold" />
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: isDarkMode ? '#171717' : '#fff',
-                          border: 'none',
+                          backgroundColor: '#111',
+                          border: '1px solid #222',
                           borderRadius: '12px',
-                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                          boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                          color: '#fff'
                         }}
                       />
-                      <Bar dataKey="completionRate" fill="#10b981" radius={[4, 4, 0, 0]} name="Completion %" />
+                      <Bar dataKey="completionRate" fill="#00E5FF" radius={[6, 6, 0, 0]} name="Completion %" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-neutral-900 p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
-                <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                  <Smartphone className="w-5 h-5" />
-                  Screen Time Trend
+              <div className="premium-card">
+                <h3 className="text-sm font-black mb-8 flex items-center gap-3 uppercase tracking-widest text-white">
+                  <Smartphone className="w-5 h-5 text-blue-400" />
+                  Focus Retention
                 </h3>
-                <div className="h-64 w-full">
+                <div className="h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={history}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#333" : "#eee"} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
                       <XAxis 
                         dataKey="date" 
                         tickFormatter={(val) => format(parseISO(val), 'MMM d')} 
-                        stroke={isDarkMode ? "#666" : "#999"}
-                        fontSize={12}
+                        stroke="#444"
+                        fontSize={10}
+                        fontWeight="bold"
                       />
-                      <YAxis stroke={isDarkMode ? "#666" : "#999"} fontSize={12} />
+                      <YAxis stroke="#444" fontSize={10} fontWeight="bold" />
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: isDarkMode ? '#171717' : '#fff',
-                          border: 'none',
+                          backgroundColor: '#111',
+                          border: '1px solid #222',
                           borderRadius: '12px',
-                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                          boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                          color: '#fff'
                         }}
                       />
-                      <Line type="monotone" dataKey="screenTime" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} name="Hours" />
+                      <Line type="monotone" dataKey="screenTime" stroke="#3b82f6" strokeWidth={4} dot={{ r: 6, fill: '#3b82f6', strokeWidth: 0 }} name="Hours" />
                     </LineChart>
                   </ResponsiveContainer>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'admin' && isAdmin && (
+            <motion.div 
+              key="admin"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="space-y-8"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="premium-card">
+                  <div className="flex items-center gap-3 mb-4 text-premium-accent">
+                    <Users className="w-5 h-5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Total Users</span>
+                  </div>
+                  <div className="text-4xl font-black text-white">{allUsers.length}</div>
+                </div>
+                <div className="premium-card">
+                  <div className="flex items-center gap-3 mb-4 text-premium-gold">
+                    <Activity className="w-5 h-5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Active Tasks</span>
+                  </div>
+                  <div className="text-4xl font-black text-white">{allTasksCount}</div>
+                </div>
+                <div className="premium-card">
+                  <div className="flex items-center gap-3 mb-4 text-green-400">
+                    <ShieldCheck className="w-5 h-5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">System Health</span>
+                  </div>
+                  <div className="text-4xl font-black text-white">OPTIMAL</div>
+                </div>
+              </div>
+
+              <div className="premium-card">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-white">User Management</h3>
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-premium-silver/30" />
+                    <input 
+                      type="text" 
+                      placeholder="Search users..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="premium-input pl-12 py-2 text-sm w-full md:w-64"
+                    />
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-premium-border">
+                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-premium-silver/30">User</th>
+                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-premium-silver/30">Role</th>
+                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-premium-silver/30">Streak</th>
+                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-premium-silver/30">Last Active</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-premium-border/50">
+                      {allUsers
+                        .filter(u => u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .map((u) => (
+                        <tr key={u.uid} className="group hover:bg-premium-dark/30 transition-colors">
+                          <td className="py-4">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-white">{u.displayName || 'Anonymous'}</span>
+                              <span className="text-xs text-premium-silver/30">{u.email}</span>
+                            </div>
+                          </td>
+                          <td className="py-4">
+                            <span className={cn(
+                              "text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest",
+                              u.role === 'admin' ? "bg-premium-accent/10 text-premium-accent" : "bg-premium-silver/10 text-premium-silver/40"
+                            )}>
+                              {u.role || 'user'}
+                            </span>
+                          </td>
+                          <td className="py-4">
+                            <div className="flex items-center gap-2 font-bold text-premium-gold">
+                              <Flame className="w-4 h-4" />
+                              {u.streak}
+                            </div>
+                          </td>
+                          <td className="py-4 text-xs text-premium-silver/40 font-medium">
+                            {u.lastActiveDate}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </motion.div>
@@ -949,32 +1252,46 @@ export default function App() {
         </AnimatePresence>
 
         {/* Footer Contact Info */}
-        <footer className="mt-16 pt-8 border-t border-neutral-200 dark:border-neutral-800 text-center space-y-2">
-          <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Contact Coach</p>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-sm text-neutral-600 dark:text-neutral-400">
-            <a href="mailto:prince.88760@gmail.com" className="hover:text-neutral-900 dark:hover:text-white transition-colors font-medium">
-              prince.88760@gmail.com
-            </a>
-            <span className="hidden md:inline opacity-30">|</span>
-            <a href="tel:9871888760" className="hover:text-neutral-900 dark:hover:text-white transition-colors font-medium">
-              98718-88760
-            </a>
+        <footer className="mt-24 pt-12 border-t border-premium-border text-center space-y-6">
+          <div className="space-y-2">
+            <p className="text-[10px] font-black text-premium-silver/20 uppercase tracking-[0.4em]">Strategic Support</p>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8 text-sm">
+              <a href="mailto:prince.88760@gmail.com" className="group flex items-center gap-3 text-premium-silver/40 hover:text-white transition-all">
+                <div className="p-2 bg-premium-card rounded-lg group-hover:bg-premium-accent/10 transition-all">
+                  <Bell className="w-4 h-4" />
+                </div>
+                <span className="font-bold tracking-tight">prince.88760@gmail.com</span>
+              </a>
+              <a href="tel:9871888760" className="group flex items-center gap-3 text-premium-silver/40 hover:text-white transition-all">
+                <div className="p-2 bg-premium-card rounded-lg group-hover:bg-premium-accent/10 transition-all">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <span className="font-bold tracking-tight">98718-88760</span>
+              </a>
+            </div>
           </div>
+          <p className="text-[10px] text-premium-silver/10 font-bold uppercase tracking-widest">© 2026 Mindset Premium Interface</p>
         </footer>
       </main>
 
       {/* Bottom Navigation (Mobile Friendly) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border-t border-neutral-200 dark:border-neutral-800 px-6 py-4 flex justify-around md:hidden">
-        <button onClick={() => setActiveTab('today')} className={cn("p-2", activeTab === 'today' ? "text-neutral-900 dark:text-white" : "text-neutral-400")}>
-          <CheckCircle2 className="w-6 h-6" />
+      <nav className="fixed bottom-0 left-0 right-0 bg-premium-black/80 backdrop-blur-2xl border-t border-premium-border px-8 py-6 flex justify-around md:hidden z-50">
+        <button onClick={() => setActiveTab('today')} className={cn("p-2 transition-all", activeTab === 'today' ? "text-premium-accent scale-110" : "text-premium-silver/30")}>
+          <CheckCircle2 className="w-7 h-7" />
         </button>
-        <button onClick={() => setActiveTab('routines')} className={cn("p-2", activeTab === 'routines' ? "text-neutral-900 dark:text-white" : "text-neutral-400")}>
-          <Plus className="w-6 h-6" />
+        <button onClick={() => setActiveTab('routines')} className={cn("p-2 transition-all", activeTab === 'routines' ? "text-premium-accent scale-110" : "text-premium-silver/30")}>
+          <Plus className="w-7 h-7" />
         </button>
-        <button onClick={() => setActiveTab('stats')} className={cn("p-2", activeTab === 'stats' ? "text-neutral-900 dark:text-white" : "text-neutral-400")}>
-          <BarChart3 className="w-6 h-6" />
+        <button onClick={() => setActiveTab('stats')} className={cn("p-2 transition-all", activeTab === 'stats' ? "text-premium-accent scale-110" : "text-premium-silver/30")}>
+          <BarChart3 className="w-7 h-7" />
         </button>
+        {isAdmin && (
+          <button onClick={() => setActiveTab('admin')} className={cn("p-2 transition-all", activeTab === 'admin' ? "text-premium-accent scale-110" : "text-premium-silver/30")}>
+            <ShieldCheck className="w-7 h-7" />
+          </button>
+        )}
       </nav>
+      <Chatbot isLoggedIn={!!user} userName={user?.displayName} />
     </div>
   );
 }

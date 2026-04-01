@@ -1,1 +1,74 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  /* Premium Palette */
+  --color-premium-black: #050505;
+  --color-premium-dark: #121212;
+  --color-premium-card: #1A1A1A;
+  --color-premium-border: #2A2A2A;
+  --color-premium-accent: #00E5FF; /* Cyan */
+  --color-premium-gold: #D4AF37;
+  --color-premium-silver: #E0E0E0;
+}
+
+@layer base {
+  body {
+    @apply bg-premium-black text-premium-silver antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer components {
+  .premium-card {
+    @apply bg-premium-card border border-premium-border rounded-2xl p-6 shadow-2xl transition-all duration-300;
+  }
+  
+  .premium-card:hover {
+    @apply border-premium-accent/30 shadow-[0_0_20px_rgba(0,229,255,0.1)];
+  }
+
+  .premium-button {
+    @apply bg-premium-card border border-premium-border text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2;
+  }
+
+  .premium-button:hover {
+    @apply bg-white text-premium-black shadow-[0_0_15px_rgba(255,255,255,0.3)];
+  }
+
+  .premium-button-accent {
+    @apply bg-premium-accent text-premium-black border-none px-6 py-3 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2;
+  }
+
+  .premium-button-accent:hover {
+    @apply opacity-90 shadow-[0_0_20px_rgba(0,229,255,0.4)];
+  }
+
+  .premium-input {
+    @apply bg-premium-dark border border-premium-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-premium-accent transition-all;
+  }
+  
+  .streak-badge {
+    @apply flex items-center gap-2 bg-premium-dark border border-premium-gold/30 px-3 py-1 rounded-full text-premium-gold font-bold text-sm;
+  }
+}
+
+/* Custom scrollbar for premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1A1A1A;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2A2A2A;
+}

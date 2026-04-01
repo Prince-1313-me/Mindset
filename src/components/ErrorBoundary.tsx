@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -25,18 +26,29 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      let errorMessage = "An unexpected error occurred.";
+      try {
+        const parsed = JSON.parse(this.state.error?.message || '{}');
+        if (parsed.error) errorMessage = `Firestore Error: ${parsed.error}`;
+      } catch (e) {
+        errorMessage = this.state.error?.message || String(this.state.error);
+      }
+
       return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-neutral-50 dark:bg-neutral-950 text-center">
-          <div className="max-w-md space-y-4">
-            <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">Something went wrong</h2>
-            <p className="text-neutral-500 dark:text-neutral-400">
-              {this.state.error?.message || 'An unexpected error occurred.'}
-            </p>
-            <button
-              className="px-6 py-2 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 rounded-xl font-bold"
+        <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 text-center">
+          <div className="max-w-md space-y-6">
+            <div className="p-8 bg-red-500/10 border border-red-500/20 rounded-3xl backdrop-blur-xl">
+              <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <AlertTriangle className="w-8 h-8 text-red-500" />
+              </div>
+              <h2 className="text-xl font-black text-white uppercase tracking-widest mb-3">System Error</h2>
+              <p className="text-sm text-[#E0E0E0]/60 font-medium leading-relaxed">{errorMessage}</p>
+            </div>
+            <button 
               onClick={() => window.location.reload()}
+              className="w-full bg-[#00E5FF] text-[#050505] font-black uppercase tracking-widest py-4 rounded-2xl shadow-[0_0_20px_rgba(0,229,255,0.3)] hover:opacity-90 transition-all"
             >
-              Reload App
+              Restart Application
             </button>
           </div>
         </div>

@@ -72,3 +72,37 @@ export async function getCoachFeedback(
     };
   }
 }
+
+export async function getChatResponse(message: string, userName?: string | null): Promise<string> {
+  const prompt = `
+    You are Prince Chatbot, an AI assistant for the "Mindset" productivity app.
+    The user's name is ${userName || 'User'}.
+    
+    Mindset App Features:
+    - Task management (Today tab)
+    - Routines (Routines tab)
+    - Stats and Streaks (Stats tab)
+    - AI Coaching (Feedback after completing the day)
+    
+    Goal: Help users find solutions to their productivity problems, explain how to use the app, and provide motivation.
+    
+    User Message: ${message}
+    
+    Prince Chatbot Response:
+  `;
+
+  try {
+    if (!ai) {
+      throw new Error("GoogleGenAI not initialized.");
+    }
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+
+    return response.text || "I'm here to help you stay focused and productive!";
+  } catch (error) {
+    console.error("Gemini Chat Error:", error);
+    return "I'm currently offline, but I'm always here to support your journey to a better mindset!";
+  }
+}

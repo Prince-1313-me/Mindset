@@ -6,6 +6,9 @@
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
         "streak": { "type": "integer" },
         "lastActiveDate": { "type": "string", "format": "date-time" },
         "missedDaysCount": { "type": "integer" },

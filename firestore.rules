@@ -7,14 +7,22 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "prince.88760@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
     function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.userId;
+      return isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
     }
     function isUserDocOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
     // ===============================================================
@@ -59,23 +67,23 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow read: if isAdmin() || (isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid));
       allow create: if isAuthenticated() && isValidTask(request.resource.data);
-      allow update: if isAuthenticated() && isDocOwner() && isValidTask(request.resource.data);
-      allow delete: if isAuthenticated() && isDocOwner();
+      allow update: if isAuthenticated() && (isDocOwner() || isAdmin()) && isValidTask(request.resource.data);
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
     }
 
     match /routines/{routineId} {
-      allow read: if true; // Default routines are public, custom are filtered by userId in app
-      allow create: if isAuthenticated() && isValidRoutine(request.resource.data);
-      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid) && isValidRoutine(request.resource.data);
-      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid);
+      allow read: if true; 
+      allow create: if isAuthenticated() && (isValidRoutine(request.resource.data) || isAdmin());
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()) && isValidRoutine(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     match /history/{historyId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow read: if isAdmin() || (isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid));
       allow create: if isAuthenticated() && isValidHistory(request.resource.data);
-      allow update: if isAuthenticated() && isDocOwner() && isValidHistory(request.resource.data);
+      allow update: if isAuthenticated() && (isDocOwner() || isAdmin()) && isValidHistory(request.resource.data);
     }
   }
 }

@@ -674,30 +674,44 @@ export default function App() {
         <div className="flex items-center gap-6">
           {user ? (
             <>
-              <div className="hidden md:flex items-center gap-2 streak-badge">
-                <Flame className="w-4 h-4 fill-current" />
-                <span>{profile?.streak || 0} DAY STREAK</span>
-              </div>
-              
-              <div className="h-8 w-[1px] bg-premium-border hidden md:block" />
+              <div className="flex items-center gap-4">
+                {isAdmin && (
+                  <button 
+                    onClick={() => setActiveTab('admin')}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg transition-all border",
+                      activeTab === 'admin' 
+                        ? "bg-premium-accent/10 border-premium-accent text-premium-accent shadow-[0_0_15px_rgba(0,229,255,0.2)]" 
+                        : "border-premium-border/50 text-premium-silver/40 hover:text-premium-accent hover:border-premium-accent/50"
+                    )}
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Admin Portal</span>
+                  </button>
+                )}
+                
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={requestNotificationPermission}
+                    className={cn(
+                      "p-2 rounded-lg transition-all",
+                      reminderPermission === 'granted' ? "text-premium-accent bg-premium-accent/5" : "text-premium-silver/30 hover:text-premium-silver/60"
+                    )}
+                  >
+                    {reminderPermission === 'granted' ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                  </button>
+                  
+                  <div className="p-2 text-premium-silver/30">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
 
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={requestNotificationPermission}
-                  className={cn(
-                    "p-2.5 rounded-xl transition-all",
-                    reminderPermission === 'granted' ? "text-premium-accent bg-premium-accent/5" : "text-premium-silver/30 hover:text-premium-silver/60"
-                  )}
-                  title={reminderPermission === 'granted' ? "Reminders Enabled" : "Enable Reminders"}
-                >
-                  {reminderPermission === 'granted' ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="p-2.5 rounded-xl hover:bg-premium-card transition-all text-white/60 hover:text-white"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
+                  <button 
+                    onClick={handleLogout}
+                    className="p-2 rounded-lg hover:bg-premium-card transition-all text-white/30 hover:text-white"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </>
           ) : (
@@ -769,42 +783,43 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <motion.div 
             whileHover={{ y: -4 }}
-            className="premium-card"
+            className="premium-card relative overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-bold text-premium-silver/40 uppercase tracking-[0.2em]">Discipline Streak</span>
-              <div className="p-1.5 bg-premium-gold/10 rounded-full border border-premium-gold/20">
-                <Flame className={cn("w-4 h-4", profile?.streak ? "text-premium-gold" : "text-premium-silver/20")} />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black text-premium-silver/20 uppercase tracking-[0.3em]">Streak</span>
+              <div className="p-1 bg-premium-gold/5 rounded-full">
+                <Flame className={cn("w-3 h-3", profile?.streak ? "text-premium-gold" : "text-premium-silver/10")} />
               </div>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-black text-white">{profile?.streak || 0}</span>
-              <span className="text-sm font-bold text-premium-silver/40 uppercase">Days</span>
+            <div className="flex flex-col">
+              <span className="text-6xl font-black text-white leading-none">{profile?.streak || 0}</span>
+              <span className="text-[10px] font-black text-premium-silver/30 uppercase tracking-[0.2em] mt-2">Days</span>
             </div>
           </motion.div>
 
           <motion.div 
             whileHover={{ y: -4 }}
-            className="premium-card"
+            className="premium-card relative"
           >
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-bold text-premium-silver/40 uppercase tracking-[0.2em]">Daily Progress</span>
-              <div className="p-1.5 bg-premium-accent/10 rounded-full border border-premium-accent/20">
-                <CheckCircle2 className="w-4 h-4 text-premium-accent" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black text-premium-silver/20 uppercase tracking-[0.3em]">Daily</span>
+              <div className="streak-badge py-1 px-3 flex items-center gap-2">
+                <Flame className="w-3 h-3 fill-current" />
+                <span className="text-[9px] font-black uppercase tracking-widest">{profile?.streak || 0} Day Streak</span>
               </div>
             </div>
-            <div className="flex items-baseline gap-2 mb-4">
-              <span className="text-5xl font-black text-white">{completionRate}</span>
-              <div className="flex flex-col">
+            <div className="flex flex-col mb-4">
+              <div className="flex items-baseline gap-1">
+                <span className="text-6xl font-black text-white leading-none">{completionRate}</span>
                 <span className="text-2xl font-black text-white">%</span>
-                <span className="text-[10px] font-bold text-premium-silver/40 uppercase tracking-tighter">Target</span>
               </div>
+              <span className="text-[10px] font-black text-premium-silver/30 uppercase tracking-[0.2em] mt-2">Target</span>
             </div>
-            <div className="w-full bg-premium-dark h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-premium-dark h-1.5 rounded-full overflow-hidden">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${completionRate}%` }}
-                className="h-full bg-premium-accent shadow-[0_0_15px_rgba(0,229,255,0.6)]"
+                className="h-full bg-premium-accent shadow-[0_0_15px_rgba(0,229,255,0.4)]"
               />
             </div>
           </motion.div>
@@ -813,27 +828,27 @@ export default function App() {
             whileHover={{ y: -4 }}
             className="premium-card"
           >
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-bold text-premium-silver/40 uppercase tracking-[0.2em]">Digital Focus</span>
-              <div className="p-1.5 bg-blue-500/10 rounded-lg">
-                <Smartphone className="w-4 h-4 text-blue-400" />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black text-premium-silver/20 uppercase tracking-[0.3em]">Focus</span>
+              <div className="p-1 bg-blue-500/5 rounded-lg">
+                <Smartphone className="w-3 h-3 text-blue-400/50" />
               </div>
             </div>
-            <div className="flex items-end justify-between">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-baseline gap-2">
                 <input 
                   type="number" 
                   value={screenTime}
                   onChange={(e) => setScreenTime(Number(e.target.value))}
-                  className="text-5xl font-black bg-transparent w-20 outline-none text-white"
+                  className="text-6xl font-black bg-transparent w-24 outline-none text-white leading-none"
                   min="0"
                   max="24"
                 />
-                <div className="w-8 h-12 border-2 border-white/20 rounded-full flex items-center justify-center">
-                  <div className={cn("w-4 h-4 bg-white rounded-full transition-all", screenTime > 0 ? "opacity-100 scale-100" : "opacity-20 scale-50")} />
-                </div>
+                <span className="text-xs font-black text-premium-silver/30 uppercase tracking-[0.2em]">Hours</span>
               </div>
-              <span className="text-sm font-bold text-premium-silver/40 uppercase mb-2">Hours</span>
+              <div className="w-8 h-12 border-2 border-white/10 rounded-full flex items-center justify-center">
+                <div className={cn("w-4 h-4 bg-white rounded-full transition-all", screenTime > 0 ? "opacity-100 scale-100" : "opacity-10 scale-50")} />
+              </div>
             </div>
           </motion.div>
         </div>
@@ -879,17 +894,6 @@ export default function App() {
           >
             Stats
           </button>
-          {isAdmin && (
-            <button 
-              onClick={() => setActiveTab('admin')}
-              className={cn(
-                "px-10 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all",
-                activeTab === 'admin' ? "bg-premium-card text-white border border-white/5 shadow-2xl" : "text-premium-silver/20 hover:text-premium-silver/40"
-              )}
-            >
-              Admin
-            </button>
-          )}
         </div>
 
         {/* Tab Content */}
@@ -1316,11 +1320,6 @@ export default function App() {
         <button onClick={() => setActiveTab('stats')} className={cn("p-2 transition-all", activeTab === 'stats' ? "text-premium-accent scale-110" : "text-premium-silver/30")}>
           <BarChart3 className="w-7 h-7" />
         </button>
-        {isAdmin && (
-          <button onClick={() => setActiveTab('admin')} className={cn("p-2 transition-all", activeTab === 'admin' ? "text-premium-accent scale-110" : "text-premium-silver/30")}>
-            <ShieldCheck className="w-7 h-7" />
-          </button>
-        )}
       </nav>
       <Chatbot isLoggedIn={!!user} userName={user?.displayName} />
     </div>

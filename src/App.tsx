@@ -649,56 +649,12 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-premium-black flex items-center justify-center">
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
         >
-          <BrainCircuit className="w-12 h-12 text-neutral-400" />
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-premium-black flex flex-col items-center justify-center p-6 text-center">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full space-y-12"
-        >
-          <div className="space-y-4">
-            <div className="bg-white w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-              <BrainCircuit className="text-premium-black w-12 h-12" />
-            </div>
-            <h1 className="text-5xl font-black tracking-tighter text-white">MINDSET</h1>
-            <p className="text-premium-silver/60 font-medium">Master your discipline. Elevate your life.</p>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-4">
-            <button 
-              onClick={() => handleLogin('user')}
-              className="premium-button-accent w-full py-5 text-lg"
-            >
-              <Users className="w-5 h-5" />
-              User Login
-            </button>
-            
-            <button 
-              onClick={() => handleLogin('admin')}
-              className="premium-button w-full py-5 text-lg"
-            >
-              <ShieldCheck className="w-5 h-5" />
-              Admin Access
-            </button>
-          </div>
-          
-          <div className="pt-8 border-t border-premium-border">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-premium-silver/30 font-bold">
-              Premium Discipline Interface v2.0
-            </p>
-          </div>
+          <BrainCircuit className="w-12 h-12 text-premium-accent" />
         </motion.div>
       </div>
     );
@@ -716,37 +672,101 @@ export default function App() {
         </div>
         
         <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-2 streak-badge">
-            <Flame className="w-4 h-4 fill-current" />
-            <span>{profile?.streak || 0} DAY STREAK</span>
-          </div>
-          
-          <div className="h-8 w-[1px] bg-premium-border hidden md:block" />
+          {user ? (
+            <>
+              <div className="hidden md:flex items-center gap-2 streak-badge">
+                <Flame className="w-4 h-4 fill-current" />
+                <span>{profile?.streak || 0} DAY STREAK</span>
+              </div>
+              
+              <div className="h-8 w-[1px] bg-premium-border hidden md:block" />
 
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={requestNotificationPermission}
-              className={cn(
-                "p-2.5 rounded-xl transition-all",
-                reminderPermission === 'granted' ? "text-premium-accent bg-premium-accent/5" : "text-premium-silver/30 hover:text-premium-silver/60"
-              )}
-              title={reminderPermission === 'granted' ? "Reminders Enabled" : "Enable Reminders"}
-            >
-              {reminderPermission === 'granted' ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
-            </button>
-            <button 
-              onClick={handleLogout}
-              className="p-2.5 rounded-xl hover:bg-premium-card transition-all text-white/60 hover:text-white"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={requestNotificationPermission}
+                  className={cn(
+                    "p-2.5 rounded-xl transition-all",
+                    reminderPermission === 'granted' ? "text-premium-accent bg-premium-accent/5" : "text-premium-silver/30 hover:text-premium-silver/60"
+                  )}
+                  title={reminderPermission === 'granted' ? "Reminders Enabled" : "Enable Reminders"}
+                >
+                  {reminderPermission === 'granted' ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
+                </button>
+                <button 
+                  onClick={handleLogout}
+                  className="p-2.5 rounded-xl hover:bg-premium-card transition-all text-white/60 hover:text-white"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => handleLogin('user')}
+                className="text-xs font-black uppercase tracking-widest text-premium-silver/60 hover:text-white transition-colors px-4 py-2"
+              >
+                Login
+              </button>
+              <button 
+                onClick={() => handleLogin('admin')}
+                className="premium-button py-2 px-4 text-[10px] font-black uppercase tracking-widest border-premium-accent/30 text-premium-accent hover:bg-premium-accent/10"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Admin Access
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto p-8 pb-32">
-        {/* Stats Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        {!user ? (
+          <div className="py-20 text-center space-y-12">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-2xl mx-auto space-y-8"
+            >
+              <div className="bg-white w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-12 shadow-[0_0_50px_rgba(255,255,255,0.15)]">
+                <BrainCircuit className="text-premium-black w-14 h-14" />
+              </div>
+              <h1 className="text-7xl font-black tracking-tighter text-white leading-tight">
+                MASTER YOUR <span className="text-premium-accent">DISCIPLINE</span>
+              </h1>
+              <p className="text-xl text-premium-silver/60 font-medium max-w-lg mx-auto">
+                The premium interface for high-performers. Track routines, maintain streaks, and elevate your mindset with AI-powered coaching.
+              </p>
+              <div className="pt-10">
+                <button 
+                  onClick={() => handleLogin('user')}
+                  className="premium-button-accent px-12 py-4 text-lg font-black uppercase tracking-widest shadow-[0_0_30px_rgba(0,229,255,0.3)]"
+                >
+                  Get Started Now
+                </button>
+              </div>
+            </motion.div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-32">
+              {[
+                { title: 'AI Coaching', desc: 'Personalized feedback based on your performance.', icon: <BrainCircuit className="w-6 h-6" /> },
+                { title: 'Streak Tracking', desc: 'Visual momentum to keep you consistent.', icon: <Flame className="w-6 h-6" /> },
+                { title: 'Routine Engine', desc: 'Build and apply high-performance routines.', icon: <Plus className="w-6 h-6" /> },
+              ].map((feature, i) => (
+                <div key={i} className="premium-card text-left space-y-4 border-premium-border/50">
+                  <div className="p-3 bg-premium-accent/10 w-fit rounded-xl text-premium-accent">
+                    {feature.icon}
+                  </div>
+                  <h3 className="font-black text-white uppercase tracking-widest text-sm">{feature.title}</h3>
+                  <p className="text-sm text-premium-silver/40 leading-relaxed">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Stats Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <motion.div 
             whileHover={{ y: -4 }}
             className="premium-card"
@@ -1259,6 +1279,8 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+        </>
+      )}
 
         {/* Footer Contact Info */}
         <footer className="mt-24 pt-12 border-t border-premium-border text-center space-y-6">

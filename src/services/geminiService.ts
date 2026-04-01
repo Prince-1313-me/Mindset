@@ -1,6 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let ai: any = null;
+
+try {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (apiKey) {
+    ai = new GoogleGenAI({ apiKey });
+  }
+} catch (error) {
+  console.error("Failed to initialize GoogleGenAI:", error);
+}
 
 export interface CoachFeedback {
   feedback: string;
@@ -43,6 +52,9 @@ export async function getCoachFeedback(
   `;
 
   try {
+    if (!ai) {
+      throw new Error("GoogleGenAI not initialized. Check your API key.");
+    }
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,

@@ -13,7 +13,8 @@ import {
   Timestamp,
   orderBy,
   limit,
-  addDoc
+  addDoc,
+  getDocFromServer
 } from 'firebase/firestore';
 import { 
   signInWithPopup, 
@@ -247,6 +248,19 @@ export default function App() {
 
   // --- Auth & Profile ---
   useEffect(() => {
+    // Test Firestore connection
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+        console.log("Firestore connection successful");
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Firestore connection failed: The client is offline. Please check your Firebase configuration.");
+        }
+      }
+    };
+    testConnection();
+
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {

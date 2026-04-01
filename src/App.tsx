@@ -759,29 +759,32 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto p-8 pb-32">
+      <main className={cn("max-w-5xl mx-auto p-8 pb-32", !user && "min-h-[80vh] flex flex-col justify-center")}>
         {!user ? (
-          <div className="py-20 text-center space-y-12">
+          <div className="text-center space-y-12 py-12">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="max-w-2xl mx-auto space-y-8"
+              className="max-w-3xl mx-auto space-y-10 flex flex-col items-center"
             >
-              <div className="bg-white w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-12 shadow-[0_0_50px_rgba(255,255,255,0.15)]">
+              <div className="bg-white w-24 h-24 rounded-3xl flex items-center justify-center mb-4 shadow-[0_0_50px_rgba(255,255,255,0.15)]">
                 <BrainCircuit className="text-premium-black w-14 h-14" />
               </div>
-              <h1 className="text-7xl font-black tracking-tighter text-white leading-tight">
-                MASTER YOUR <span className="text-premium-accent">DISCIPLINE</span>
-              </h1>
-              <p className="text-xl text-premium-silver/60 font-medium max-w-lg mx-auto">
-                The premium interface for high-performers. Track routines, maintain streaks, and elevate your mindset with AI-powered coaching.
-              </p>
-              <div className="pt-10">
+              <div className="space-y-6">
+                <h1 className="text-7xl md:text-8xl font-black tracking-tighter text-white leading-[0.9]">
+                  MASTER YOUR <br />
+                  <span className="text-premium-accent">DISCIPLINE</span>
+                </h1>
+                <p className="text-xl text-premium-silver/60 font-medium max-w-lg mx-auto leading-relaxed">
+                  The premium interface for high-performers. Track routines, maintain streaks, and elevate your mindset with AI-powered coaching.
+                </p>
+              </div>
+              <div className="pt-6 w-full flex justify-center">
                 <button 
                   onClick={() => handleLogin('user')}
                   disabled={isLoggingIn}
                   className={cn(
-                    "premium-button-accent px-12 py-4 text-lg font-black uppercase tracking-widest shadow-[0_0_30px_rgba(0,229,255,0.3)]",
+                    "premium-button-accent px-16 py-5 text-xl font-black uppercase tracking-[0.2em] shadow-[0_0_40px_rgba(0,229,255,0.4)] hover:scale-105 transition-transform",
                     isLoggingIn && "opacity-50 cursor-not-allowed"
                   )}
                 >
@@ -796,13 +799,24 @@ export default function App() {
                 { title: 'Streak Tracking', desc: 'Visual momentum to keep you consistent.', icon: <Flame className="w-6 h-6" /> },
                 { title: 'Routine Engine', desc: 'Build and apply high-performance routines.', icon: <Plus className="w-6 h-6" /> },
               ].map((feature, i) => (
-                <div key={i} className="premium-card text-left space-y-4 border-premium-border/50">
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ 
+                    duration: 0.8, 
+                    delay: i * 0.15,
+                    ease: [0.21, 0.47, 0.32, 0.98] 
+                  }}
+                  className="premium-card text-left space-y-4 border-premium-border/50"
+                >
                   <div className="p-3 bg-premium-accent/10 w-fit rounded-xl text-premium-accent">
                     {feature.icon}
                   </div>
                   <h3 className="font-black text-white uppercase tracking-widest text-sm">{feature.title}</h3>
                   <p className="text-sm text-premium-silver/40 leading-relaxed">{feature.desc}</p>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>

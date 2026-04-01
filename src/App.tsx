@@ -507,6 +507,8 @@ export default function App() {
         errorMessage = "Login popup was blocked by your browser. Please allow popups for this site.";
       } else if (error.code === 'auth/unauthorized-domain') {
         errorMessage = "This domain is not authorized for Firebase Authentication. Please add it to the authorized domains in the Firebase Console.";
+      } else if (error.message && error.message.includes('identitytoolkit')) {
+        errorMessage = "Identity Toolkit API is not enabled or is restricted for your API key. Please enable it in the Google Cloud Console and ensure your API key has permission to use it.";
       } else if (error.message) {
         errorMessage = `Login error: ${error.message}`;
       }
